@@ -1,1 +1,10 @@
-
+{
+  "background_color": "#0a0a0a",
+  "description": "Landslide Early Warning for North-East India - Field Reporter",
+  "display": "standalone",
+  "icons": [{"sizes": "192x192", "src": "https://cdn-icons-png.flaticon.com/512/854/854878.png", "type": "image/png"}],
+  "name": "BHU-RAKSHAK Field Reporter",
+  "short_name": "BHU-RAKSHAK",
+  "start_url": "./index.html",
+  "theme_color": "#0a0a0a"
+}
