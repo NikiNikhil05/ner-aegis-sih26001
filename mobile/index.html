@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<title>BHU-RAKSHAK - Field Reporter</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#0a0a0a;
+    color:#e5e7eb;
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding-bottom:90px;
+  }
+  .mono{font-family:'JetBrains Mono', monospace}
+  header{
+    background:#141414;
+    border-bottom:1px solid #27272a;
+    padding:14px 16px;
+    position:sticky; top:0; z-index:10;
+  }
+  .brand{display:flex; align-items:center; gap:10px}
+  .brand-logo{
+    width:32px; height:28px; background:linear-gradient(135deg,#e5e7eb 0%,#71717a 100%);
+    clip-path: polygon(20% 100%, 0% 60%, 15% 30%, 35% 50%, 50% 20%, 65% 50%, 85% 30%, 100% 60%, 80% 100%);
+  }
+  .brand h1{font-size:15px; letter-spacing:0.08em; font-weight:700}
+  .brand p{font-size:9px; letter-spacing:0.1em; color:#a1a1aa; text-transform:uppercase; margin-top:2px}
+  .live{font-size:9px; color:#71717a; letter-spacing:0.1em}
+  .live-dot{width:6px; height:6px; background:#f87171; border-radius:50%; display:inline-block; animation:blink 1.5s infinite}
+  @keyframes blink{0%,100%{opacity:1} 50%{opacity:0.3}}
+
+  .kpi-grid{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:#27272a; margin:12px; border-radius:8px; overflow:hidden; border:1px solid #27272a}
+  .kpi{background:#171717; padding:12px}
+  .kpi-label{font-size:8px; letter-spacing:0.12em; color:#71717a; text-transform:uppercase; margin-bottom:6px}
+  .kpi-value{font-size:20px; font-weight:700}
+  .kpi-sub{font-size:10px; color:#a1a1aa; margin-top:4px}
+  .risk-moderate{color:#fcd34d; background:#fcd34d1a; border:1px solid #fcd34d30; padding:2px 6px; border-radius:3px; font-size:10px; letter-spacing:0.05em}
+
+  .card{background:#171717; border:1px solid #27272a; border-radius:8px; margin:12px; padding:14px}
+  .card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px}
+  .card-title{font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#e5e7eb; font-weight:600}
+  .card-note{font-size:8px; letter-spacing:0.08em; color:#52525b; text-transform:uppercase}
+
+  .report-btn{
+    width:100%; background:#dc2626; color:white; border:1px solid #ef4444; 
+    padding:16px; border-radius:8px; font-weight:700; letter-spacing:0.08em;
+    font-size:13px; text-transform:uppercase; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    box-shadow:0 0 20px #dc26262e;
+  }
+  .report-btn:active{transform:scale(0.98); background:#b91c1c}
+  .report-btn:disabled{opacity:0.5}
+
+  .field{margin-top:14px}
+  .field-label{font-size:9px; letter-spacing:0.1em; color:#a1a1aa; text-transform:uppercase; margin-bottom:6px; display:block}
+  .field-input{
+    width:100%; background:#0a0a0a; border:1px solid #27272a; color:#e5e7eb;
+    padding:12px; border-radius:6px; font-family:'JetBrains Mono', monospace; font-size:13px;
+  }
+  .field-input:focus{outline:none; border-color:#3f3f46}
+
+  .loc-box{
+    background:#0a0a0a; border:1px dashed #3f3f46; border-radius:6px; padding:12px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .loc-coord{font-size:12px; color:#22d3ee}
+  .loc-acc{font-size:10px; color:#71717a; margin-top:2px}
+
+  .camera-preview{width:100%; height:220px; background:#0a0a0a; border:1px solid #27272a; border-radius:6px; margin-top:8px; object-fit:cover; display:none}
+  .camera-placeholder{width:100%; height:220px; background:#0a0a0a; border:1px dashed #3f3f46; border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:#52525b; font-size:11px; text-transform:uppercase; letter-spacing:0.08em}
+
+  .chip{display:inline-flex; padding:3px 8px; border-radius:3px; font-size:10px; font-family:'JetBrains Mono', monospace; font-weight:600; letter-spacing:0.05em}
+  .chip-low{background:#22c55e1a; color:#86efac; border:1px solid #22c55e30}
+  .chip-mod{background:#eab3081a; color:#fcd34d; border:1px solid #eab30830}
+  .chip-high{background:#f973161a; color:#fdba74; border:1px solid #f9731630}
+  .chip-severe{background:#ef44441a; color:#f87171; border:1px solid #ef444430}
+
+  .toast{
+    position:fixed; bottom:20px; left:12px; right:12px; background:#171717; border:1px solid #3f3f46;
+    padding:14px; border-radius:8px; display:none; z-index:100; box-shadow:0 10px 30px #00000080;
+  }
+  .offline-bar{background:#eab308; color:#000; text-align:center; padding:6px; font-size:10px; letter-spacing:0.08em; font-weight:700; text-transform:uppercase; display:none}
+</style>
+</head>
+<body>
+
+<div class="offline-bar" id="offlineBar">● Offline Mode — Reports will sync when online</div>
+
+<header>
+  <div style="display:flex; justify-content:space-between; align-items:center">
+    <div class="brand">
+      <div class="brand-logo"></div>
+      <div>
+        <h1>BHU-RAKSHAK</h1>
+        <p>Landslide Early Warning • NER</p>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="live mono"><span class="live-dot"></span> LIVE FIELD</div>
+      <div class="live mono" id="liveTime">--:--:-- IST</div>
+    </div>
+  </div>
+</header>
+
+<div class="kpi-grid mono">
+  <div class="kpi">
+    <div class="kpi-label">Your Reports</div>
+    <div class="kpi-value" id="reportCount">0</div>
+    <div class="kpi-sub" id="syncStatus">0 pending sync</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Regional Risk</div>
+    <div><span class="risk-moderate">MODERATE</span></div>
+    <div class="kpi-sub">Composite across 8 NER states</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Report Landslide / Cracks</div>
+    <div class="card-note">M5 Mobile</div>
+  </div>
+
+  <button class="report-btn" id="captureBtn" onclick="startCamera()">
+    <span>◉</span> Capture Evidence
+  </button>
+
+  <video id="video" autoplay playsinline class="camera-preview"></video>
+  <canvas id="canvas" style="display:none"></canvas>
+  <img id="preview" class="camera-preview" style="display:none">
+  <div id="placeholder" class="camera-placeholder">
+    <div style="font-size:28px">📷</div>
+    <div>Tap capture to start camera</div>
+    <div style="font-size:9px; color:#3f3f46">GPS + Timestamp auto-embedded</div>
+  </div>
+
+  <div style="display:flex; gap:8px; margin-top:10px; display:none" id="camActions">
+    <button onclick="retake()" style="flex:1; background:#27272a; color:#e5e7eb; border:1px solid #3f3f46; padding:10px; border-radius:6px; font-size:11px; text-transform:uppercase; letter-spacing:0.06em">Retake</button>
+    <button onclick="confirmPhoto()" style="flex:1; background:#e5e7eb; color:#000; border:none; padding:10px; border-radius:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em">Use Photo ✓</button>
+  </div>
+
+  <div class="field">
+    <label class="field-label">Location — Auto-detected</label>
+    <div class="loc-box">
+      <div>
+        <div class="loc-coord mono" id="coords">Locating... Tap 📍</div>
+        <div class="loc-acc mono" id="accuracy">Accuracy: --</div>
+      </div>
+      <button onclick="getLocation()" style="background:#27272a; border:1px solid #3f3f46; color:#e5e7eb; width:36px; height:36px; border-radius:6px">📍</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="field-label">Risk Level Observed</label>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+      <button class="chip chip-low" style="justify-content:center; padding:10px" onclick="setRisk(this,'low')">LOW — Routine</button>
+      <button class="chip chip-mod" style="justify-content:center; padding:10px" onclick="setRisk(this,'moderate')">MODERATE — Watch</button>
+      <button class="chip chip-high" style="justify-content:center; padding:10px" onclick="setRisk(this,'high')">HIGH — Advisory</button>
+      <button class="chip chip-severe" style="justify-content:center; padding:10px" onclick="setRisk(this,'severe')">SEVERE — Evacuate</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="field-label">Description</label>
+    <textarea id="desc" class="field-input" rows="3" placeholder="e.g., Road crack near Mangan, 0.5m wide, water seepage observed..."></textarea>
+  </div>
+
+  <div class="field">
+    <button id="submitBtn" onclick="submitReport()" style="width:100%; background:#e5e7eb; color:#000; border:none; padding:14px; border-radius:6px; font-weight:700; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; margin-top:8px">
+      Submit to BHU-RAKSHAK Feed →
+    </button>
+    <div style="text-align:center; font-size:9px; color:#52525b; margin-top:8px" class="mono">Offline-first • Auto-sync to dashboard Alerts Feed</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <div class="card-title">Recent Field Reports (Local)</div>
+    <div class="card-note mono" id="localCount">0 reports</div>
+  </div>
+  <div id="reportsList" style="display:flex; flex-direction:column; gap:8px">
+    <div style="text-align:center; padding:20px; color:#52525b; font-size:11px" class="mono">No reports yet — Capture first evidence</div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div style="display:flex; gap:10px">
+    <div style="color:#22c55e">✓</div>
+    <div>
+      <div style="font-size:12px; font-weight:600" id="toastTitle">Report queued</div>
+      <div style="font-size:11px; color:#a1a1aa; margin-top:2px" id="toastMsg">Will sync to Mangan, Sikkim alerts feed</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let stream=null, photoData=null, selectedRisk=null, currentPos=null;
+
+function updateTime(){document.getElementById('liveTime').textContent=new Date().toLocaleTimeString('en-IN',{hour12:false})+' IST'}
+setInterval(updateTime,1000); updateTime();
+
+function checkOnline(){
+  const bar=document.getElementById('offlineBar');
+  if(!navigator.onLine){bar.style.display='block'}else{bar.style.display='none'}
+}
+window.addEventListener('online',checkOnline); window.addEventListener('offline',checkOnline); checkOnline();
+
+async function startCamera(){
+  try{
+    document.getElementById('placeholder').style.display='none';
+    const video=document.getElementById('video');
+    video.style.display='block';
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+    video.srcObject=stream;
+    document.getElementById('camActions').style.display='flex';
+    document.getElementById('captureBtn').innerHTML='<span>◉</span> Take Photo';
+    document.getElementById('captureBtn').onclick=takePhoto;
+  }catch(e){alert('Camera permission denied or not available: '+e.message)}
+}
+function takePhoto(){
+  const video=document.getElementById('video');
+  const canvas=document.getElementById('canvas');
+  canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  photoData=canvas.toDataURL('image/jpeg',0.8);
+  document.getElementById('preview').src=photoData;
+  document.getElementById('preview').style.display='block';
+  video.style.display='none';
+  if(stream){stream.getTracks().forEach(t=>t.stop())}
+  document.getElementById('captureBtn').style.display='none';
+}
+function retake(){
+  photoData=null;
+  document.getElementById('preview').style.display='none';
+  document.getElementById('captureBtn').style.display='flex';
+  document.getElementById('captureBtn').innerHTML='<span>◉</span> Capture Evidence';
+  document.getElementById('captureBtn').onclick=startCamera;
+  startCamera();
+}
+function confirmPhoto(){
+  document.getElementById('camActions').style.display='none';
+  showToast('Photo locked','GPS + timestamp embedded');
+  getLocation();
+}
+function getLocation(){
+  const coordEl=document.getElementById('coords');
+  const accEl=document.getElementById('accuracy');
+  coordEl.textContent='Locating...';
+  if(!navigator.geolocation){coordEl.textContent='GPS not supported'; return}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    currentPos=pos;
+    coordEl.textContent=`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+    accEl.textContent=`Accuracy: ±${Math.round(pos.coords.accuracy)}m • ${new Date().toLocaleTimeString()}`;
+  }, err=>{
+    coordEl.textContent='GPS failed: '+err.message;
+  }, {enableHighAccuracy:true, timeout:15000});
+}
+function setRisk(btn, level){
+  selectedRisk=level;
+  document.querySelectorAll('.chip').forEach(c=>c.style.outline='none');
+  btn.style.outline='2px solid #e5e7eb';
+}
+function loadReports(){
+  const reports=JSON.parse(localStorage.getItem('bhu_reports')||'[]');
+  document.getElementById('reportCount').textContent=reports.length;
+  document.getElementById('localCount').textContent=reports.length+' reports';
+  document.getElementById('syncStatus').textContent=reports.filter(r=>!r.synced).length+' pending sync';
+  const list=document.getElementById('reportsList');
+  if(reports.length===0){list.innerHTML='<div style="text-align:center; padding:20px; color:#52525b; font-size:11px" class="mono">No reports yet — Capture first evidence</div>'; return}
+  list.innerHTML=reports.slice().reverse().map(r=>`
+    <div style="background:#0a0a0a; border:1px solid #27272a; border-radius:6px; padding:10px; display:flex; gap:10px">
+      <img src="${r.photo}" style="width:56px; height:56px; object-fit:cover; border-radius:4px; border:1px solid #27272a">
+      <div style="flex:1">
+        <div style="display:flex; justify-content:space-between"><span class="mono" style="font-size:10px; color:#a1a1aa">${r.time}</span><span class="chip chip-${r.risk}">${r.risk.toUpperCase()}</span></div>
+        <div class="mono" style="font-size:11px; margin-top:4px; color:#e5e7eb">${r.desc.substring(0,60)}</div>
+        <div class="mono" style="font-size:9px; color:#52525b; margin-top:2px">${r.coords}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function submitReport(){
+  if(!photoData){alert('Please capture photo first'); return}
+  if(!selectedRisk){alert('Select risk level (Low/Moderate/High/Severe)'); return}
+  if(!currentPos){alert('Get GPS location first'); return}
+  const desc=document.getElementById('desc').value||'No description';
+  const report={
+    id:Date.now(),
+    photo:photoData,
+    risk:selectedRisk,
+    desc:desc,
+    coords:`${currentPos.coords.latitude.toFixed(6)}, ${currentPos.coords.longitude.toFixed(6)}`,
+    accuracy:Math.round(currentPos.coords.accuracy),
+    time:new Date().toLocaleString('en-IN'),
+    timestamp:new Date().toISOString(),
+    synced:false
+  };
+  const reports=JSON.parse(localStorage.getItem('bhu_reports')||'[]');
+  reports.push(report);
+  localStorage.setItem('bhu_reports', JSON.stringify(reports));
+  loadReports();
+  showToast('Report queued for BHU-RAKSHAK','Will appear in Alerts feed: Mangan / Kohima style');
+  // reset
+  photoData=null; selectedRisk=null;
+  document.getElementById('preview').style.display='none';
+  document.getElementById('placeholder').style.display='flex';
+  document.getElementById('captureBtn').style.display='flex';
+  document.getElementById('captureBtn').innerHTML='<span>◉</span> Capture Evidence';
+  document.getElementById('captureBtn').onclick=startCamera;
+  document.getElementById('desc').value='';
+  document.getElementById('coords').textContent='Locating... Tap 📍';
+  document.getElementById('accuracy').textContent='Accuracy: --';
+  document.querySelectorAll('.chip').forEach(c=>c.style.outline='none');
+}
+function showToast(title, msg){
+  document.getElementById('toastTitle').textContent=title;
+  document.getElementById('toastMsg').textContent=msg;
+  const t=document.getElementById('toast');
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',3500);
+}
+loadReports();
+getLocation();
+</script>
+</body>
+</html>
